@@ -20,6 +20,7 @@ class Loader {
 			return ptr;
 		}
 		mutex.unlock();
+		AtomicInt.inc(ref SupraTest.failed);
 		throw new ErrLoader.SYMBOL_NOTFOUND(@"$name not found");
 	}
 	public string library_path;

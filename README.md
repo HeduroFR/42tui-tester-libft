@@ -50,3 +50,22 @@ asynchronously and fast on several processors.
 It checks the memory with SupraLeak to stay fast :)
 
 An idea? Something else? Open an issue!
+
+# 42TUI fork
+
+This fork is based on [nda-cunh/libft_tester](https://github.com/nda-cunh/libft_tester) commit `fa0062fe805ff55179ad4bfd5ccd8d19d3c330fd` and retains its GPL license. It does not update itself automatically.
+
+Build and run the container against a **disposable copy** of a libft project (the tester runs its Makefile and creates build artifacts):
+
+```sh
+docker build -t 42tui-tester-libft .
+docker run --rm --network none --read-only --cap-drop ALL \
+  --security-opt no-new-privileges --pids-limit 512 \
+  --tmpfs /tmp:rw,exec,nosuid,nodev,size=256m \
+  --mount "type=bind,source=/absolute/path/to/disposable-copy,target=/project" \
+  42tui-tester-libft --report /project/result.json
+```
+
+The optional `--report PATH` writes a version 1 JSON summary with `version`, `total`, `passed`, `failed`, `errors`, and `skipped`. It counts displayed checks, missing functions and forbidden symbols; warnings count as skipped. The destination must not exist. Normal execution includes the linked-list tests. `--report` cannot be combined with `--versus`. Exit status is 0 for success, 1 for failed checks or inspection errors, and 2 for setup or report errors; the container watchdog returns 124 on timeout. A failed build does not create a report.
+
+Run `python3 tests/check_container.py 42tui-tester-libft` to check the container report and failure paths.

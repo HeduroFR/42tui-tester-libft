@@ -167,6 +167,7 @@ class LibftTester {
 		}
 		catch (Error e) {
 			stderr.printf ("\033[31m[SupraTest]\033[0m %s", e.message);
+			SupraTest.errors++;
 		}
 		remove_tmp_dir (Path.get_dirname (loader.library_path));
 	}
@@ -196,8 +197,7 @@ void check_forbidden_functions () throws Error {
 	Process.spawn_command_line_sync (@"nm $(loader.library_path)", out output, out errput, out status);
 	if (status != 0) {
 		stderr.printf ("\033[31m[SupraTest] Error while checking forbidden functions\033[0m\n");
-		stderr.printf("%s\n", errput);
-		return;
+		throw new FileError.FAILED("Cannot inspect forbidden functions: %s", errput);
 	}
 
 	var sp = output.split ("\n");
@@ -232,6 +232,7 @@ void check_forbidden_functions () throws Error {
 			if (!(func_name in allowed)) {
 				print ("\033[91m[Forbidden Function]: \033[31m%s !\033[0m\n", func_name);
 				is_good = false;
+				SupraTest.failed++;
 			}
 		}
 	}
@@ -239,32 +240,11 @@ void check_forbidden_functions () throws Error {
 		print ("\033[32mNo forbidden function found !\033[0m\n");
 }
 
-void check_update () {
-	const string script = """
-		exec </dev/null
-		before=$(git rev-parse HEAD)
-		timeout 30 git pull -q || exit 0
-		[ "$before" = "$(git rev-parse HEAD)" ] || timeout 600 sh install.sh
-	""";
-	try {
-		string path = Path.get_dirname (FileUtils.read_link ("/proc/self/exe"));
-		if (!FileUtils.test (Path.build_filename (path, ".git"), FileTest.EXISTS))
-			return;
-
-		string[] env = Environ.get ();
-		env = Environ.set_variable (env, "GIT_TERMINAL_PROMPT", "0");
-		env = Environ.set_variable (env, "GIT_SSH_COMMAND", "ssh -o BatchMode=yes");
-
-		string lock = Path.build_filename (path, ".git", "update.lock");
-		Process.spawn_async (path, {"setsid", "flock", "-n", lock, "sh", "-c", script}, env,
-			SpawnFlags.SEARCH_PATH | SpawnFlags.STDOUT_TO_DEV_NULL | SpawnFlags.STDERR_TO_DEV_NULL, null, null);
-	}
-	catch (Error e) {}
-}
-
 public string? versus = null;
+string? option_report = null;
 
 private const GLib.OptionEntry[] options = {
+	{ "report", '\0', OptionFlags.NONE, OptionArg.FILENAME, ref option_report, "Write a version 1 JSON summary", "PATH" },
 	{ "versus", '\0', OptionFlags.NONE, OptionArg.STRING, ref versus, "Benchmark your libft against libc or another libft (.so, .a or folder with a Makefile)", "libc|LIBFT" },
 	{ null }
 };
@@ -279,7 +259,12 @@ async void main (string[] args) {
 	}
 	catch (Error e) {
 		stderr.printf ("\033[31m[SupraTest]\033[0m %s", e.message);
-		return;
+		Process.exit(2);
+	}
+
+	if (option_report != null && (versus != null || FileUtils.test(option_report, FileTest.EXISTS))) {
+		printerr("Report requires normal mode and a fresh destination.\n");
+		Process.exit(2);
 	}
 
 	if (versus != null) {
@@ -287,7 +272,6 @@ async void main (string[] args) {
 		return;
 	}
 
-	check_update();
 	print("\n--------------- [ LIBFT TESTER ] ---------------\n");
 	print("CPU: [%u] ", get_num_processors());
 	print("%s\n\n", get_num_processors() > 2 ? "\033[92mFast Mode enabled\033[0m" : "\033[91mFast Mode disabled\033[0m");
@@ -298,6 +282,14 @@ async void main (string[] args) {
 	}
 	catch (Error e) {
 		stderr.printf ("\033[31m[SupraTest]\033[0m %s", e.message);
+		Process.exit(2);
+	}
+	int total = SupraTest.passed + SupraTest.failed + SupraTest.errors + SupraTest.skipped;
+	if (option_report != null) {
+		try {
+			FileUtils.set_contents(option_report, "{\"version\":1,\"total\":%d,\"passed\":%d,\"failed\":%d,\"errors\":%d,\"skipped\":%d}\n".printf(total, SupraTest.passed, SupraTest.failed, SupraTest.errors, SupraTest.skipped));
+		} catch (Error e) { printerr("Cannot write summary: %s\n", e.message); Process.exit(2); }
 	}
 	print("\n====================================================\n");
+	Process.exit(SupraTest.failed + SupraTest.errors > 0 ? 1 : 0);
 }

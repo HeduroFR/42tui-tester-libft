@@ -34,6 +34,15 @@ public enum Status {
 
 
 namespace SupraTest{
+	public int passed = 0;
+	public int failed = 0;
+	public int skipped = 0;
+	public int errors = 0;
+
+	string record(string message, ref int counter) {
+		AtomicInt.inc(ref counter);
+		return message;
+	}
 	public struct Test {
 		public string? 	message;
 		public string? 	stdout;
@@ -57,8 +66,8 @@ namespace SupraTest{
 			this.malloc_failed = false;
 		}
 
-		public unowned string msg_ok() {
-			return "\033[32m[OK]\033[0m";
+		public string msg_ok() {
+			return record("\033[32m[OK]\033[0m", ref passed);
 		}
 
 		/**
@@ -95,12 +104,12 @@ namespace SupraTest{
 
 		public string msg_warn (string? format = null) {
 			var s = format ?? this.message;
-			return @"\033[33m[WARN] \033[93m$(s)\033[0m";
+			return record(@"\033[33m[WARN] \033[93m$(s)\033[0m", ref skipped);
 		}
 
 		public string msg_ko (string? format = null) {
 			var s = format ?? this.message;
-			return @"\033[31m[KO] \033[91m$(s)\033[0m";
+			return record(@"\033[31m[KO] \033[91m$(s)\033[0m", ref failed);
 		}
 
 		public string msg_err (string? format = null, ...) {
@@ -119,25 +128,25 @@ namespace SupraTest{
 			}
 			switch (status) {
 				case LEAK:
-					return @"\033[31m[LEAK] $(this.alloc) Alloc $(this.free) Free $(msg) \033[0m";
+					return record(@"\033[31m[LEAK] $(this.alloc) Alloc $(this.free) Free $(msg) \033[0m", ref failed);
 				case TIMEOUT:
-					return @"\033[31m[TIMEOUT] $(msg)\033[0m";
+					return record(@"\033[31m[TIMEOUT] $(msg)\033[0m", ref failed);
 				case SIGILL:
-					return @"\033[31m[SIGILL] $(msg)\033[0m";
+					return record(@"\033[31m[SIGILL] $(msg)\033[0m", ref failed);
 				case SIGFPE:
-					return @"\033[31m[SIGFPE] $(msg)\033[0m";
+					return record(@"\033[31m[SIGFPE] $(msg)\033[0m", ref failed);
 				case SIGBUS:
-					return @"\033[31m[SIGBUS] $(msg)\033[0m";
+					return record(@"\033[31m[SIGBUS] $(msg)\033[0m", ref failed);
 				case SIGSEGV:
-					return @"\033[31m[SIGSEGV] $(msg)\033[0m";
+					return record(@"\033[31m[SIGSEGV] $(msg)\033[0m", ref failed);
 				case ABORTED:
-					return @"\033[31m[ABORTED] $(msg)\033[0m";
+					return record(@"\033[31m[ABORTED] $(msg)\033[0m", ref failed);
 				case OK:
-					return "\033[32m[OK]\033[0m";
+					return record("\033[32m[OK]\033[0m", ref passed);
 				case KO:
 					return msg_ko(msg);
 				default:
-					return "\033[31m[???]\033[0m";
+					return record("\033[31m[???]\033[0m", ref failed);
 			}
 		}
 
@@ -151,25 +160,25 @@ namespace SupraTest{
 
 			switch (status) {
 				case LEAK:
-					return @"\033[31m[LEAK] $(this.alloc) Alloc $(this.free) Free $(msg)\033[0m";
+					return record(@"\033[31m[LEAK] $(this.alloc) Alloc $(this.free) Free $(msg)\033[0m", ref failed);
 				case TIMEOUT:
-					return @"\033[31m[TIMEOUT] $(msg)\033[0m";
+					return record(@"\033[31m[TIMEOUT] $(msg)\033[0m", ref failed);
 				case SIGILL:
-					return @"\033[31m[SIGILL] $(msg)\033[0m";
+					return record(@"\033[31m[SIGILL] $(msg)\033[0m", ref failed);
 				case SIGFPE:
-					return @"\033[31m[SIGFPE] $(msg)\033[0m";
+					return record(@"\033[31m[SIGFPE] $(msg)\033[0m", ref failed);
 				case SIGBUS:
-					return @"\033[31m[SIGBUS] $(msg)\033[0m";
+					return record(@"\033[31m[SIGBUS] $(msg)\033[0m", ref failed);
 				case SIGSEGV:
-					return @"\033[31m[SIGSEGV] $(msg)\033[0m";
+					return record(@"\033[31m[SIGSEGV] $(msg)\033[0m", ref failed);
 				case ABORTED:
-					return @"\033[31m[ABORTED] $(msg)\033[0m";
+					return record(@"\033[31m[ABORTED] $(msg)\033[0m", ref failed);
 				case OK:
-					return @"\033[32m[OK]\033[0m";
+					return record("\033[32m[OK]\033[0m", ref passed);
 				case KO:
 					return msg_ko(msg);
 				default:
-					return @"\033[31m[???] \033[0m";
+					return record(@"\033[31m[???] \033[0m", ref failed);
 			}
 		}
 
